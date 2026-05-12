@@ -8,24 +8,26 @@ import folium
 import random
 import streamlit as st
 from streamlit_folium import st_folium
+import os
+DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Data Loading Functions
 
 @st.cache_resource
 def load_graph():
-    G = ox.load_graphml('iceland_drive_accessible.graphml')
+    G = ox.load_graphml(os.path.join(DATA_DIR, 'iceland_drive_accessible.graphml'))
     return G, ox.convert.to_undirected(G)
 
 @st.cache_data
 def load_attractions():
-    df = gpd.read_file('alternative_attractions_processed.geojson')
+    df = gpd.read_file(os.path.join(DATA_DIR, 'alternative_attractions_processed.geojson'))
     df['category'] = df['category'].str.split('•').apply(lambda x: [i.strip() for i in x] if isinstance(x, list) else x)
     df['group'] = df['group'].str.split('•').apply(lambda x: [i.strip() for i in x] if isinstance(x, list) else x)
     return df
 
 @st.cache_data
 def load_distance_matrix():
-    dist_df = pd.read_csv('distance_matrix.csv', index_col=0)
+    dist_df = pd.read_csv(os.path.join(DATA_DIR, 'distance_matrix.csv'), index_col=0)
     dist_df.index = dist_df.index.map(lambda x: int(float(x)))
     dist_df.columns = dist_df.columns.map(lambda x: int(float(x)))
     dist_df = dist_df[~dist_df.index.duplicated(keep='first')]
@@ -34,7 +36,7 @@ def load_distance_matrix():
 
 @st.cache_data
 def load_config():
-    with open('config.json', 'r') as f:
+    with open(os.path.join(DATA_DIR, 'config.json'), 'r') as f:
         config = json.load(f)
     return config['keflavik_node']
 
