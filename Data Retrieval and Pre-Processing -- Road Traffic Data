@@ -1,0 +1,1953 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 45,
+   "id": "d686b907-e620-4935-8051-8f34fd756c79",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import requests\n",
+    "import geopandas as gpd\n",
+    "import json\n",
+    "import time"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b1dc968a-f935-450e-9d76-15d7de19d7c0",
+   "metadata": {},
+   "source": [
+    "## Load in Road Traffic Data from Excel and Clean/Preprocess"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "0ded3043-91c8-4b14-acfc-3bfcab71dbf3",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# load in road data\n",
+    "\n",
+    "road_df = pd.read_excel(\"road_traffic_data_2024.xlsx\", sheet_name=\"rSvæðaskipt\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "3f648b6c-8e7d-4df3-bf43-18e93c9d76f2",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Vegnr</th>\n",
+       "      <th>Kaflanr</th>\n",
+       "      <th>Vegheiti</th>\n",
+       "      <th>Heiti upphafspunkts</th>\n",
+       "      <th>Heiti endapunkts</th>\n",
+       "      <th>Bst</th>\n",
+       "      <th>Est</th>\n",
+       "      <th>Lengd</th>\n",
+       "      <th>rÁDU</th>\n",
+       "      <th>rSDU</th>\n",
+       "      <th>rVDU</th>\n",
+       "      <th>Eknir þ. km</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Svæði 2</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>1</td>\n",
+       "      <td>a1</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>Sýslumörk, sýslusteinn</td>\n",
+       "      <td>Núpsstaður</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>9.03</td>\n",
+       "      <td>9.03</td>\n",
+       "      <td>1450.0</td>\n",
+       "      <td>2100.0</td>\n",
+       "      <td>930.0</td>\n",
+       "      <td>4785.719</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "  Vegnr Kaflanr    Vegheiti     Heiti upphafspunkts Heiti endapunkts  Bst  \\\n",
+       "0   NaN     NaN     Svæði 2                     NaN              NaN  NaN   \n",
+       "1     1      a1  Hringvegur  Sýslumörk, sýslusteinn       Núpsstaður  0.0   \n",
+       "\n",
+       "    Est  Lengd    rÁDU    rSDU   rVDU  Eknir þ. km  \n",
+       "0   NaN    NaN     NaN     NaN    NaN          NaN  \n",
+       "1  9.03   9.03  1450.0  2100.0  930.0     4785.719  "
+      ]
+     },
+     "execution_count": 3,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "road_df.head(2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "e1820f75-cc79-4e61-95f2-544a5c5d79cf",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# rename columns to only use standard letters\n",
+    "\n",
+    "road_df.columns = [\n",
+    "    \"Vegnr\", \"Kaflanr\", \"Vegheiti\", \"Start_name\", \"End_name\",\n",
+    "    \"Bst\", \"Est\", \"Lengd\", \"rADU\", \"rSDU\", \"rVDU\", \"Eknir_km\"\n",
+    "]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "565cfd16-1438-41a6-b2a6-772ef94d2d5a",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Vegnr</th>\n",
+       "      <th>Kaflanr</th>\n",
+       "      <th>Vegheiti</th>\n",
+       "      <th>Start_name</th>\n",
+       "      <th>End_name</th>\n",
+       "      <th>Bst</th>\n",
+       "      <th>Est</th>\n",
+       "      <th>Lengd</th>\n",
+       "      <th>rADU</th>\n",
+       "      <th>rSDU</th>\n",
+       "      <th>rVDU</th>\n",
+       "      <th>Eknir_km</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Svæði 2</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "  Vegnr Kaflanr Vegheiti Start_name End_name  Bst  Est  Lengd  rADU  rSDU  \\\n",
+       "0   NaN     NaN  Svæði 2        NaN      NaN  NaN  NaN    NaN   NaN   NaN   \n",
+       "\n",
+       "   rVDU  Eknir_km  \n",
+       "0   NaN       NaN  "
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "road_df.head(1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "7bc9de06-20d0-4fac-a4f6-72549102eea2",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# remove rows that are not road segments (there are some headers in between road entries)\n",
+    "road_df = road_df[pd.to_numeric(road_df[\"Vegnr\"], errors=\"coerce\").notna()].copy()\n",
+    "# standardize road numbers to ensure we can work with them\n",
+    "road_df[\"Vegnr\"] = road_df[\"Vegnr\"].astype(int).astype(str)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "c2523f75-bcc3-4acd-843b-d810977de051",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# compute a summer ratio of traffic by dividing summer and year round traffic numbers\n",
+    "# this will serve as indicator for tourist use of roads, under the assumption that local/communter traffic does not \n",
+    "# vary significantly throughout the year\n",
+    "\n",
+    "road_df[\"summer_ratio\"] = road_df[\"rSDU\"] / road_df[\"rADU\"]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "394bb7c4-74a1-4fae-93c1-2f1d57252d69",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Vegnr</th>\n",
+       "      <th>Kaflanr</th>\n",
+       "      <th>Vegheiti</th>\n",
+       "      <th>Start_name</th>\n",
+       "      <th>End_name</th>\n",
+       "      <th>Bst</th>\n",
+       "      <th>Est</th>\n",
+       "      <th>Lengd</th>\n",
+       "      <th>rADU</th>\n",
+       "      <th>rSDU</th>\n",
+       "      <th>rVDU</th>\n",
+       "      <th>Eknir_km</th>\n",
+       "      <th>summer_ratio</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>1</td>\n",
+       "      <td>a1</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>Sýslumörk, sýslusteinn</td>\n",
+       "      <td>Núpsstaður</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>9.03</td>\n",
+       "      <td>9.03</td>\n",
+       "      <td>1450.0</td>\n",
+       "      <td>2100.0</td>\n",
+       "      <td>930.0</td>\n",
+       "      <td>4785.719</td>\n",
+       "      <td>1.448276</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>1</td>\n",
+       "      <td>a2</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>Núpsstaður</td>\n",
+       "      <td>Dalshöfðavegur (2019-01)</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>2.30</td>\n",
+       "      <td>2.30</td>\n",
+       "      <td>1500.0</td>\n",
+       "      <td>2150.0</td>\n",
+       "      <td>950.0</td>\n",
+       "      <td>1239.941</td>\n",
+       "      <td>1.433333</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "  Vegnr Kaflanr    Vegheiti              Start_name                  End_name  \\\n",
+       "1     1      a1  Hringvegur  Sýslumörk, sýslusteinn                Núpsstaður   \n",
+       "2     1      a2  Hringvegur              Núpsstaður  Dalshöfðavegur (2019-01)   \n",
+       "\n",
+       "   Bst   Est  Lengd    rADU    rSDU   rVDU  Eknir_km  summer_ratio  \n",
+       "1  0.0  9.03   9.03  1450.0  2100.0  930.0  4785.719      1.448276  \n",
+       "2  0.0  2.30   2.30  1500.0  2150.0  950.0  1239.941      1.433333  "
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "road_df.head(2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "id": "d5ab0c2d-7206-4f2c-af88-76749345ec22",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.4\n",
+      "3.3333333333333335\n"
+     ]
+    }
+   ],
+   "source": [
+    "# to get a better idea of the kind of ratios we can expect, we investigate their range\n",
+    "print(min(road_df[\"summer_ratio\"]))\n",
+    "print(max(road_df[\"summer_ratio\"]))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "id": "9d2804d1-c528-42f2-b3f3-4afee65713b4",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Vegnr                    9501\n",
+      "Kaflanr                     1\n",
+      "Vegheiti        Stafdalsvegur\n",
+      "rADU                     50.0\n",
+      "rSDU                     20.0\n",
+      "summer_ratio              0.4\n",
+      "Name: 4279, dtype: object\n",
+      "Vegnr                       958\n",
+      "Kaflanr                       1\n",
+      "Vegheiti        Vöðlavíkurvegur\n",
+      "rADU                        6.0\n",
+      "rSDU                       20.0\n",
+      "summer_ratio           3.333333\n",
+      "Name: 4256, dtype: object\n"
+     ]
+    }
+   ],
+   "source": [
+    "# we can also check which segments have the highest and lowest ratio\n",
+    "print(road_df.loc[road_df[\"summer_ratio\"].idxmin(), [\"Vegnr\", \"Kaflanr\", \"Vegheiti\", \"rADU\", \"rSDU\", \"summer_ratio\"]])\n",
+    "print(road_df.loc[road_df[\"summer_ratio\"].idxmax(), [\"Vegnr\", \"Kaflanr\", \"Vegheiti\", \"rADU\", \"rSDU\", \"summer_ratio\"]])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "46c49a5b-8fbc-4345-afbd-25e670be612d",
+   "metadata": {},
+   "source": [
+    "Stafdalsvegur is a road leading to a ski station - it makes sense that there is less traffic in summer. Vöðlavíkurvegur is a fairly remote road in the East that is hard to drive on in the winter. It leads to some hikes and nature, which explains why it is driven on more in summer as well."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "fe9f9cd1-17da-4aff-9048-c2820799f4fd",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# next we have to sort our dataframe more as there are several rows for some kaflanr (section IDs)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "69920133-e46e-4288-ac44-ad92ea441de1",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Kaflanr\n",
+       "1     1521\n",
+       "2      650\n",
+       "3      357\n",
+       "4      235\n",
+       "5      158\n",
+       "      ... \n",
+       "p2       1\n",
+       "p1       1\n",
+       "n1       1\n",
+       "n0       1\n",
+       "r7       1\n",
+       "Name: count, Length: 216, dtype: int64"
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "road_df['Kaflanr'].value_counts()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "975cd55b-16c9-4792-af5e-73c677609c85",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# however, the system is also set up in a way where short roads only have 1 kaflanr "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "6fdcc9a6-ca94-446b-9283-8b4879c32269",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "    Vegnr Kaflanr                    Vegheiti\n",
+      "521   201       1                  Vallavegur\n",
+      "522    22       1                   Dalavegur\n",
+      "527    25       1            Þykkvabæjarvegur\n",
+      "533    26       1                   Landvegur\n",
+      "568    30       1  Skeiða- og Hrunamannavegur\n",
+      "598    31       1              Skálholtsvegur\n",
+      "609    32       1            Þjórsárdalsvegur\n",
+      "630    33       1         Gaulverjabæjarvegur\n",
+      "649    34       1             Eyrarbakkavegur\n",
+      "660    35       1          Biskupstungnabraut\n",
+      "717   204       1             Meðallandsvegur\n",
+      "736   205       1               Klausturvegur\n",
+      "737   206       1                  Holtsvegur\n",
+      "743   208       1           Skaftártunguvegur\n",
+      "754   209       1               Hrífunesvegur\n",
+      "756   210       1            Ljótarstaðavegur\n",
+      "758   211       1              Álftaversvegur\n",
+      "763   212       1                Hryggjavegur\n",
+      "769   214       1          Kerlingardalsvegur\n",
+      "777   215       1          Reynishverfisvegur\n"
+     ]
+    }
+   ],
+   "source": [
+    "# checking roads with kaflanr 1 as there are so amny\n",
+    "print(road_df[road_df[\"Kaflanr\"] == 1][[\"Vegnr\", \"Kaflanr\", \"Vegheiti\"]].drop_duplicates().head(20))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "id": "bb9e48fd-0bc5-4ec5-9849-9b574b016b5a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# for those road where there are several kaflanr representing sub-segments, we need to take a weighted average (based on the length of the \n",
+    "# segment) to be able to later match them with geometries retrieved from Vegagerðin's GeoServer API"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "8e4865a2-a757-45b0-827c-0b5d60046480",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# first, we create a function to calculate the weighted average of the sub-segments\n",
+    "\n",
+    "def wavg(group, val_col, weight_col):\n",
+    "    return np.average(group[val_col], weights=group[weight_col])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 121,
+   "id": "b4570832-26bc-4588-9d8c-5a10d51aed3e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# next, we need to group the dataframe by kaflanr and vegnr (road number) to uniquely identify each segment\n",
+    "# then we can apply our function to them, by renaming sub-segments to group them, summing up the length of the sub-segments, and\n",
+    "# creating length-weighted averages for the segments using the function we created above\n",
+    "\n",
+    "kaflanr = road_df.groupby([\"Vegnr\", \"Kaflanr\"]).apply(\n",
+    "    lambda g: pd.Series({\n",
+    "        \"Vegheiti\":     g[\"Vegheiti\"].iloc[0], # renaming road to the first name\n",
+    "        # next we ensure we have a segment that has a name\n",
+    "        \"Start_name\":   g[\"Start_name\"].dropna().iloc[0] if g[\"Start_name\"].notna().any() else None,\n",
+    "        \"End_name\":     g[\"End_name\"].dropna().iloc[0]   if g[\"End_name\"].notna().any()   else None,\n",
+    "        \"Lengd\":        g[\"Lengd\"].sum(), # calculating the length\n",
+    "        \"rADU\":         wavg(g, \"rADU\", \"Lengd\"), # all year data\n",
+    "        \"rSDU\":         wavg(g, \"rSDU\", \"Lengd\"), # summer data\n",
+    "        \"summer_ratio\": wavg(g, \"summer_ratio\", \"Lengd\"), # summer ratio we created above\n",
+    "        \"rVDU\":         wavg(g, \"rVDU\", \"Lengd\")\n",
+    "    })\n",
+    ", include_groups=False).reset_index()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 122,
+   "id": "7c07e9e1-b613-4394-a15a-566a61aec06b",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Sub-segments: 4191\n",
+      "Kaflanr sections: 1150\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"Sub-segments: {len(road_df)}\")\n",
+    "print(f\"Kaflanr sections: {len(kaflanr)}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "dcf62ffa-9583-4cab-8e53-a77afbd90f33",
+   "metadata": {},
+   "source": [
+    "We can see that the number of section/rows got significantly reduced by grouping sub-segments and taking their weighted averages."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 123,
+   "id": "121a27c5-d4b3-40c2-a036-2172a7e02cd3",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Summer ratio range: 0.40 – 3.27\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"\\nSummer ratio range: {kaflanr['summer_ratio'].min():.2f} – {kaflanr['summer_ratio'].max():.2f}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "67270b78-6171-47fa-9015-99e5325acd3b",
+   "metadata": {},
+   "source": [
+    "Due to aggregating sub-segments of roads, the maximum of the summer ratio has been reduced slightly, but not much."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 124,
+   "id": "d743efe1-0583-4df1-891b-bf7e42572901",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Mean: 1.57\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"Mean: {kaflanr['summer_ratio'].mean():.2f}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6f65f917-3e35-4c12-a348-756856898d76",
+   "metadata": {},
+   "source": [
+    "Overall, the summer ratio is higher, but some roads more used in winter and some roads used consistenly for commuting make the mean 1.57."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 125,
+   "id": "443e6033-e266-4a27-b9e6-bfeee024e1ec",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Vegnr</th>\n",
+       "      <th>Kaflanr</th>\n",
+       "      <th>Vegheiti</th>\n",
+       "      <th>Start_name</th>\n",
+       "      <th>End_name</th>\n",
+       "      <th>Lengd</th>\n",
+       "      <th>rADU</th>\n",
+       "      <th>rSDU</th>\n",
+       "      <th>summer_ratio</th>\n",
+       "      <th>rVDU</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>1</td>\n",
+       "      <td>a1</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>Sýslumörk, sýslusteinn</td>\n",
+       "      <td>Núpsstaður</td>\n",
+       "      <td>9.03</td>\n",
+       "      <td>1450.000000</td>\n",
+       "      <td>2100.000000</td>\n",
+       "      <td>1.448276</td>\n",
+       "      <td>930.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>1</td>\n",
+       "      <td>a2</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>Núpsstaður</td>\n",
+       "      <td>Dalshöfðavegur (2019-01)</td>\n",
+       "      <td>11.12</td>\n",
+       "      <td>1531.384892</td>\n",
+       "      <td>2201.034173</td>\n",
+       "      <td>1.437337</td>\n",
+       "      <td>982.086331</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>1</td>\n",
+       "      <td>a3</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>Dalshöfðavegur (2019-01)</td>\n",
+       "      <td>Foss</td>\n",
+       "      <td>9.45</td>\n",
+       "      <td>1600.000000</td>\n",
+       "      <td>2300.000000</td>\n",
+       "      <td>1.437500</td>\n",
+       "      <td>1050.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>1</td>\n",
+       "      <td>a4</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>Foss</td>\n",
+       "      <td>Klausturvegur (205-01)</td>\n",
+       "      <td>11.41</td>\n",
+       "      <td>1604.075372</td>\n",
+       "      <td>2314.943032</td>\n",
+       "      <td>1.442691</td>\n",
+       "      <td>1052.716915</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>1</td>\n",
+       "      <td>a6</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>Klausturvegur (205-01)</td>\n",
+       "      <td>Skál</td>\n",
+       "      <td>13.14</td>\n",
+       "      <td>1875.799087</td>\n",
+       "      <td>2684.550989</td>\n",
+       "      <td>1.429584</td>\n",
+       "      <td>1211.187215</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "  Vegnr Kaflanr    Vegheiti                Start_name  \\\n",
+       "0     1      a1  Hringvegur    Sýslumörk, sýslusteinn   \n",
+       "1     1      a2  Hringvegur                Núpsstaður   \n",
+       "2     1      a3  Hringvegur  Dalshöfðavegur (2019-01)   \n",
+       "3     1      a4  Hringvegur                      Foss   \n",
+       "4     1      a6  Hringvegur    Klausturvegur (205-01)   \n",
+       "\n",
+       "                   End_name  Lengd         rADU         rSDU  summer_ratio  \\\n",
+       "0                Núpsstaður   9.03  1450.000000  2100.000000      1.448276   \n",
+       "1  Dalshöfðavegur (2019-01)  11.12  1531.384892  2201.034173      1.437337   \n",
+       "2                      Foss   9.45  1600.000000  2300.000000      1.437500   \n",
+       "3    Klausturvegur (205-01)  11.41  1604.075372  2314.943032      1.442691   \n",
+       "4                      Skál  13.14  1875.799087  2684.550989      1.429584   \n",
+       "\n",
+       "          rVDU  \n",
+       "0   930.000000  \n",
+       "1   982.086331  \n",
+       "2  1050.000000  \n",
+       "3  1052.716915  \n",
+       "4  1211.187215  "
+      ]
+     },
+     "execution_count": 125,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "kaflanr.head(5)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "4ea0e314-7100-40a4-812b-6cf9fe8aecf0",
+   "metadata": {},
+   "source": [
+    "## Retrieve Geoinformation from Vegagerðin's GeoServer API"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "b205dd15-16d9-430f-ad61-1db4aad505a7",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# first, we check how many roads there are in our road data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 46,
+   "id": "3f696520-796e-4254-8815-6ed339c3831f",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "400\n"
+     ]
+    }
+   ],
+   "source": [
+    "road_numbers = kaflanr['Vegnr'].unique().tolist()\n",
+    "print(len(road_numbers))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 50,
+   "id": "bf029051-cc33-44d1-811c-fe40c31c0547",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "1150\n"
+     ]
+    }
+   ],
+   "source": [
+    "# also check road segments to later compare\n",
+    "\n",
+    "print(len(kaflanr))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 47,
+   "id": "d41da047-77eb-4a36-b24f-beed634d55a3",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Total batches: 8\n",
+      "Batch 1/8: 375 features — running total: 375\n",
+      "Batch 2/8: 163 features — running total: 538\n",
+      "Batch 3/8: 335 features — running total: 873\n",
+      "Batch 4/8: 247 features — running total: 1120\n",
+      "Batch 5/8: 221 features — running total: 1341\n",
+      "Batch 6/8: 170 features — running total: 1511\n",
+      "Batch 7/8: 193 features — running total: 1704\n",
+      "Batch 8/8: 207 features — running total: 1911\n",
+      "\n",
+      "Total features retrieved: 1911\n"
+     ]
+    }
+   ],
+   "source": [
+    "# since there are 400 roads, we will work in batches to not overload the API\n",
+    "\n",
+    "all_features = []\n",
+    "batch_size = 50\n",
+    "\n",
+    "WFS_URL = \"https://gagnaveita.vegagerdin.is/geoserver/gis/ows\"\n",
+    "\n",
+    "# splitting into batches of 50\n",
+    "batches = [road_numbers[i:i+batch_size] for i in range(0, len(road_numbers), batch_size)]\n",
+    "print(f\"Total batches: {len(batches)}\")\n",
+    "\n",
+    "for i, batch in enumerate(batches):\n",
+    "    road_filter = f\"VEGNR IN ({','.join(batch)})\"\n",
+    "    \n",
+    "    # pass relevant parameters to API\n",
+    "    params_batch = {\n",
+    "        \"service\":      \"WFS\",\n",
+    "        \"version\":      \"1.0.0\",\n",
+    "        \"request\":      \"GetFeature\",\n",
+    "        \"typeName\":     \"gis:vegakerfi_ist120_2024_1\",\n",
+    "        \"srsName\":      \"EPSG:4326\",\n",
+    "        \"outputFormat\": \"application/json\",\n",
+    "        \"cql_filter\":   road_filter\n",
+    "    }\n",
+    "\n",
+    "    # perform the request\n",
+    "    r = requests.get(WFS_URL, params=params_batch, timeout=120)\n",
+    "\n",
+    "    # checking for errors and reporting accordingly\n",
+    "    if r.status_code == 200:\n",
+    "        data = r.json()\n",
+    "        all_features.extend(data['features'])\n",
+    "        print(f\"Batch {i+1}/{len(batches)}: {len(data['features'])} features — running total: {len(all_features)}\")\n",
+    "    else:\n",
+    "        print(f\"Batch {i+1} failed: status {r.status_code}\")\n",
+    "        print(r.text[:200])\n",
+    "\n",
+    "    # ensuring the server is not overloaded\n",
+    "    time.sleep(1)  \n",
+    "\n",
+    "print(f\"\\nTotal features retrieved: {len(all_features)}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 69,
+   "id": "a2380ca7-e548-4f40-bb8f-98dcfd4de172",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "# all_features[0]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "4d40f13d-4302-4547-9a32-75c24016b239",
+   "metadata": {},
+   "source": [
+    "As we can see above, we have retrieved 1911 features. We had 1150 segments (corresponding to features here) in the original data, so there are some that might need to be merged. First, we can build a geojson, load this in as a geodataframe and then filter/merge the necessary subparts."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 52,
+   "id": "f9bead76-fd8e-4ffb-9504-e8c7bc12d0d1",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "# geojson for geopandas to then read in\n",
+    "geojson = {\n",
+    "    \"type\": \"FeatureCollection\",\n",
+    "    \"features\": all_features\n",
+    "}\n",
+    "\n",
+    "# load into GeoDataFrame\n",
+    "gdf_raw = gpd.GeoDataFrame.from_features(geojson, crs=\"EPSG:4326\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 53,
+   "id": "ec0bcd78-5b47-4659-a3c9-b6348a98426a",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Shape: (1911, 28)\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"Shape: {gdf_raw.shape}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 54,
+   "id": "eadc0f20-e57b-40f4-ac0c-0641cc86031e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Columns: ['geometry', 'OBJECTID', 'FITJUFLOKKUR', 'IDKAFLI', 'VEGNR', 'KAFLANR', 'NAFNFITJU', 'LENGD', 'VEGFLOKKUN', 'VEGFLOKKUNSVEITAFELAGA', 'VEGTEGUND', 'SLITLAG', 'ARSLITLAG', 'BREIDD', 'AKSTURSSTEFNA', 'HRADI', 'EININGVEGAKERFIS', 'UPPHAFNOTKUNAR', 'ENDIRNOTKUNAR', 'HEIMILD', 'DAGSHEIMILDAR', 'DAGSINNSETNINGAR', 'DAGSLEIDRETTINGAR', 'VINNSLUFERLIFITJU', 'NAKVAEMNIXY', 'GAGNAEIGANDI', 'EIGANDIFYRIRBAERIS', 'DAGSGRUNNUR']\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"\\nColumns: {gdf_raw.columns.tolist()}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 55,
+   "id": "d008bb7a-a277-49ba-9cd0-4d9194476fc3",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "CRS: EPSG:4326\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"\\nCRS: {gdf_raw.crs}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 56,
+   "id": "89c5e9b6-8dbe-4be2-8168-57b9bf02cc6e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Geometry types: LineString    1911\n",
+      "Name: count, dtype: int64\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"\\nGeometry types: {gdf_raw.geometry.geom_type.value_counts()}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 57,
+   "id": "c447d553-074f-4f00-9c37-9d80898bab47",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>geometry</th>\n",
+       "      <th>OBJECTID</th>\n",
+       "      <th>FITJUFLOKKUR</th>\n",
+       "      <th>IDKAFLI</th>\n",
+       "      <th>VEGNR</th>\n",
+       "      <th>KAFLANR</th>\n",
+       "      <th>NAFNFITJU</th>\n",
+       "      <th>LENGD</th>\n",
+       "      <th>VEGFLOKKUN</th>\n",
+       "      <th>VEGFLOKKUNSVEITAFELAGA</th>\n",
+       "      <th>...</th>\n",
+       "      <th>ENDIRNOTKUNAR</th>\n",
+       "      <th>HEIMILD</th>\n",
+       "      <th>DAGSHEIMILDAR</th>\n",
+       "      <th>DAGSINNSETNINGAR</th>\n",
+       "      <th>DAGSLEIDRETTINGAR</th>\n",
+       "      <th>VINNSLUFERLIFITJU</th>\n",
+       "      <th>NAKVAEMNIXY</th>\n",
+       "      <th>GAGNAEIGANDI</th>\n",
+       "      <th>EIGANDIFYRIRBAERIS</th>\n",
+       "      <th>DAGSGRUNNUR</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>LINESTRING Z (-19.61083 65.51913 295.20542, -1...</td>\n",
+       "      <td>85</td>\n",
+       "      <td>301</td>\n",
+       "      <td>48382</td>\n",
+       "      <td>1</td>\n",
+       "      <td>m5</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>9830</td>\n",
+       "      <td>1</td>\n",
+       "      <td>None</td>\n",
+       "      <td>...</td>\n",
+       "      <td>9999-12-31T00:00:00Z</td>\n",
+       "      <td>None</td>\n",
+       "      <td>None</td>\n",
+       "      <td>2016-07-15T00:00:00Z</td>\n",
+       "      <td>2025-12-15T00:00:00Z</td>\n",
+       "      <td>5.0</td>\n",
+       "      <td>0.5</td>\n",
+       "      <td>Vegagerðin</td>\n",
+       "      <td>Vegagerðin</td>\n",
+       "      <td>2026-04-23T00:00:00Z</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>LINESTRING Z (-20.14411 63.67512 29.16600, -20...</td>\n",
+       "      <td>50</td>\n",
+       "      <td>301</td>\n",
+       "      <td>19</td>\n",
+       "      <td>1</td>\n",
+       "      <td>c0</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>10130</td>\n",
+       "      <td>1</td>\n",
+       "      <td>None</td>\n",
+       "      <td>...</td>\n",
+       "      <td>9999-12-31T00:00:00Z</td>\n",
+       "      <td>None</td>\n",
+       "      <td>None</td>\n",
+       "      <td>2017-01-05T00:00:00Z</td>\n",
+       "      <td>2017-01-09T00:00:00Z</td>\n",
+       "      <td>5.0</td>\n",
+       "      <td>0.5</td>\n",
+       "      <td>Vegagerðin</td>\n",
+       "      <td>Vegagerðin</td>\n",
+       "      <td>2026-04-23T00:00:00Z</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>LINESTRING Z (-20.40202 63.83453 28.81100, -20...</td>\n",
+       "      <td>48</td>\n",
+       "      <td>301</td>\n",
+       "      <td>48927</td>\n",
+       "      <td>1</td>\n",
+       "      <td>c4</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>120</td>\n",
+       "      <td>1</td>\n",
+       "      <td>None</td>\n",
+       "      <td>...</td>\n",
+       "      <td>9999-12-31T00:00:00Z</td>\n",
+       "      <td>None</td>\n",
+       "      <td>None</td>\n",
+       "      <td>2017-01-05T00:00:00Z</td>\n",
+       "      <td>2017-01-09T00:00:00Z</td>\n",
+       "      <td>5.0</td>\n",
+       "      <td>0.5</td>\n",
+       "      <td>Vegagerðin</td>\n",
+       "      <td>Vegagerðin</td>\n",
+       "      <td>2026-04-23T00:00:00Z</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>LINESTRING Z (-19.69201 65.50943 420.15800, -1...</td>\n",
+       "      <td>84</td>\n",
+       "      <td>301</td>\n",
+       "      <td>48382</td>\n",
+       "      <td>1</td>\n",
+       "      <td>m5</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>4320</td>\n",
+       "      <td>1</td>\n",
+       "      <td>None</td>\n",
+       "      <td>...</td>\n",
+       "      <td>9999-12-31T00:00:00Z</td>\n",
+       "      <td>None</td>\n",
+       "      <td>None</td>\n",
+       "      <td>2016-07-15T00:00:00Z</td>\n",
+       "      <td>2025-12-15T00:00:00Z</td>\n",
+       "      <td>5.0</td>\n",
+       "      <td>0.5</td>\n",
+       "      <td>Vegagerðin</td>\n",
+       "      <td>Vegagerðin</td>\n",
+       "      <td>2026-04-23T00:00:00Z</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>LINESTRING Z (-21.07605 65.14668 4.58520, -21....</td>\n",
+       "      <td>36</td>\n",
+       "      <td>301</td>\n",
+       "      <td>62</td>\n",
+       "      <td>1</td>\n",
+       "      <td>k1</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>910</td>\n",
+       "      <td>1</td>\n",
+       "      <td>None</td>\n",
+       "      <td>...</td>\n",
+       "      <td>9999-12-31T00:00:00Z</td>\n",
+       "      <td>None</td>\n",
+       "      <td>None</td>\n",
+       "      <td>2016-01-12T00:00:00Z</td>\n",
+       "      <td>2016-01-14T00:00:00Z</td>\n",
+       "      <td>5.0</td>\n",
+       "      <td>0.5</td>\n",
+       "      <td>Vegagerðin</td>\n",
+       "      <td>Vegagerðin</td>\n",
+       "      <td>2026-04-23T00:00:00Z</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>5 rows × 28 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                                            geometry  OBJECTID  FITJUFLOKKUR  \\\n",
+       "0  LINESTRING Z (-19.61083 65.51913 295.20542, -1...        85           301   \n",
+       "1  LINESTRING Z (-20.14411 63.67512 29.16600, -20...        50           301   \n",
+       "2  LINESTRING Z (-20.40202 63.83453 28.81100, -20...        48           301   \n",
+       "3  LINESTRING Z (-19.69201 65.50943 420.15800, -1...        84           301   \n",
+       "4  LINESTRING Z (-21.07605 65.14668 4.58520, -21....        36           301   \n",
+       "\n",
+       "   IDKAFLI VEGNR KAFLANR   NAFNFITJU  LENGD  VEGFLOKKUN  \\\n",
+       "0    48382     1      m5  Hringvegur   9830           1   \n",
+       "1       19     1      c0  Hringvegur  10130           1   \n",
+       "2    48927     1      c4  Hringvegur    120           1   \n",
+       "3    48382     1      m5  Hringvegur   4320           1   \n",
+       "4       62     1      k1  Hringvegur    910           1   \n",
+       "\n",
+       "  VEGFLOKKUNSVEITAFELAGA  ...         ENDIRNOTKUNAR  HEIMILD DAGSHEIMILDAR  \\\n",
+       "0                   None  ...  9999-12-31T00:00:00Z     None          None   \n",
+       "1                   None  ...  9999-12-31T00:00:00Z     None          None   \n",
+       "2                   None  ...  9999-12-31T00:00:00Z     None          None   \n",
+       "3                   None  ...  9999-12-31T00:00:00Z     None          None   \n",
+       "4                   None  ...  9999-12-31T00:00:00Z     None          None   \n",
+       "\n",
+       "       DAGSINNSETNINGAR     DAGSLEIDRETTINGAR VINNSLUFERLIFITJU  NAKVAEMNIXY  \\\n",
+       "0  2016-07-15T00:00:00Z  2025-12-15T00:00:00Z               5.0          0.5   \n",
+       "1  2017-01-05T00:00:00Z  2017-01-09T00:00:00Z               5.0          0.5   \n",
+       "2  2017-01-05T00:00:00Z  2017-01-09T00:00:00Z               5.0          0.5   \n",
+       "3  2016-07-15T00:00:00Z  2025-12-15T00:00:00Z               5.0          0.5   \n",
+       "4  2016-01-12T00:00:00Z  2016-01-14T00:00:00Z               5.0          0.5   \n",
+       "\n",
+       "  GAGNAEIGANDI EIGANDIFYRIRBAERIS           DAGSGRUNNUR  \n",
+       "0   Vegagerðin         Vegagerðin  2026-04-23T00:00:00Z  \n",
+       "1   Vegagerðin         Vegagerðin  2026-04-23T00:00:00Z  \n",
+       "2   Vegagerðin         Vegagerðin  2026-04-23T00:00:00Z  \n",
+       "3   Vegagerðin         Vegagerðin  2026-04-23T00:00:00Z  \n",
+       "4   Vegagerðin         Vegagerðin  2026-04-23T00:00:00Z  \n",
+       "\n",
+       "[5 rows x 28 columns]"
+      ]
+     },
+     "execution_count": 57,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "gdf_raw.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 62,
+   "id": "62e72d5a-c47f-488a-a860-6e48be1ff223",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "1     800\n",
+      "2     247\n",
+      "3      66\n",
+      "4      26\n",
+      "5      15\n",
+      "6      10\n",
+      "7       5\n",
+      "12      4\n",
+      "10      2\n",
+      "8       2\n",
+      "9       1\n",
+      "28      1\n",
+      "11      1\n",
+      "13      1\n",
+      "Name: count, dtype: int64\n"
+     ]
+    }
+   ],
+   "source": [
+    "# checking up on how many WFS features I have per Kaflanr\n",
+    "wfs_counts = gdf_raw.groupby(['VEGNR', 'KAFLANR']).size()\n",
+    "print(wfs_counts.value_counts())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 64,
+   "id": "9423ae21-0430-49c3-8094-86d05f80038b",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "VEGNR  KAFLANR\n",
+      "41     15         28\n",
+      "dtype: int64\n"
+     ]
+    }
+   ],
+   "source": [
+    "# checking up on a potential outlier\n",
+    "wfs_counts = gdf_raw.groupby(['VEGNR', 'KAFLANR']).size()\n",
+    "print(wfs_counts[wfs_counts == 28])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c59eb8ec-e0ab-4f5f-8ea6-2de5859434b5",
+   "metadata": {},
+   "source": [
+    "The 'outlier' is Reykjanesbraut, which is the main highway connecting Reykjavík to the Keflavík airport area. It likely has many WFS features due to more complicated road structures, or potential updates."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 66,
+   "id": "a4bc7258-5fa2-48de-961a-bc25cd34ac0f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# before moving forward, I will remove columns I do not need so I can have a cleaner joined dataframe"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 65,
+   "id": "40f0e6ff-005c-492b-b329-cb239aee86aa",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Index(['geometry', 'OBJECTID', 'FITJUFLOKKUR', 'IDKAFLI', 'VEGNR', 'KAFLANR',\n",
+       "       'NAFNFITJU', 'LENGD', 'VEGFLOKKUN', 'VEGFLOKKUNSVEITAFELAGA',\n",
+       "       'VEGTEGUND', 'SLITLAG', 'ARSLITLAG', 'BREIDD', 'AKSTURSSTEFNA', 'HRADI',\n",
+       "       'EININGVEGAKERFIS', 'UPPHAFNOTKUNAR', 'ENDIRNOTKUNAR', 'HEIMILD',\n",
+       "       'DAGSHEIMILDAR', 'DAGSINNSETNINGAR', 'DAGSLEIDRETTINGAR',\n",
+       "       'VINNSLUFERLIFITJU', 'NAKVAEMNIXY', 'GAGNAEIGANDI',\n",
+       "       'EIGANDIFYRIRBAERIS', 'DAGSGRUNNUR'],\n",
+       "      dtype='object')"
+      ]
+     },
+     "execution_count": 65,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "gdf_raw.columns"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 85,
+   "id": "df653be9-33e9-4ca5-b66a-35f4cf84875d",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(1911, 6)\n"
+     ]
+    }
+   ],
+   "source": [
+    "# only keeping those relevant for me, mainly the columns I will use to join and the geometry information, as well as some\n",
+    "# columns I can potentially use as filters if useful\n",
+    "keep_cols = ['geometry', 'VEGNR', 'KAFLANR', 'NAFNFITJU', 'LENGD', 'VEGFLOKKUN']\n",
+    "gdf = gdf_raw[keep_cols].copy()\n",
+    "print(gdf.shape)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 86,
+   "id": "4bf64a01-db52-4e2d-99d1-bb29f5edd396",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>geometry</th>\n",
+       "      <th>VEGNR</th>\n",
+       "      <th>KAFLANR</th>\n",
+       "      <th>NAFNFITJU</th>\n",
+       "      <th>LENGD</th>\n",
+       "      <th>VEGFLOKKUN</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>LINESTRING Z (-19.61083 65.51913 295.20542, -1...</td>\n",
+       "      <td>1</td>\n",
+       "      <td>m5</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>9830</td>\n",
+       "      <td>1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>LINESTRING Z (-20.14411 63.67512 29.16600, -20...</td>\n",
+       "      <td>1</td>\n",
+       "      <td>c0</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>10130</td>\n",
+       "      <td>1</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                                            geometry VEGNR KAFLANR  \\\n",
+       "0  LINESTRING Z (-19.61083 65.51913 295.20542, -1...     1      m5   \n",
+       "1  LINESTRING Z (-20.14411 63.67512 29.16600, -20...     1      c0   \n",
+       "\n",
+       "    NAFNFITJU  LENGD  VEGFLOKKUN  \n",
+       "0  Hringvegur   9830           1  \n",
+       "1  Hringvegur  10130           1  "
+      ]
+     },
+     "execution_count": 86,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "gdf.head(2)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "5f4e80e7-996c-47df-8c34-fbf7753eeb41",
+   "metadata": {},
+   "source": [
+    "## Merge Road Data with Spatial Data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 126,
+   "id": "89438ef8-273b-4d6f-ba4c-e509f991a102",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# to ensure the join can go well, we need to have the road number as string to match the road traffic data\n",
+    "gdf['VEGNR'] = gdf['VEGNR'].astype(str)\n",
+    "\n",
+    "# we also need to do this for the road segment number for both dataframes to ensure they can be matched in the merge\n",
+    "gdf['KAFLANR'] = gdf['KAFLANR'].astype(str)\n",
+    "kaflanr['Kaflanr'] = kaflanr['Kaflanr'].astype(str)\n",
+    "\n",
+    "# finally there is also a mismatch due to leading 0 used in one data source but not the other one\n",
+    "gdf['KAFLANR'] = gdf['KAFLANR'].str.lstrip('0').replace('', '0')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 139,
+   "id": "27121317-e145-4728-8bf8-ffd650a3c216",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# now we can join the dataframes\n",
+    "gdf_joined = gdf.merge(\n",
+    "    kaflanr[['Vegnr', 'Kaflanr', 'summer_ratio', 'rADU', 'Vegheiti', 'Start_name', 'End_name', 'rSDU', 'Lengd', 'rVDU']],\n",
+    "    left_on=['VEGNR', 'KAFLANR'],\n",
+    "    right_on=['Vegnr', 'Kaflanr'],\n",
+    "    how='left'\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 140,
+   "id": "b2d557d8-f6d4-45a0-894d-3d3642428fb1",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "WFS rows before join:  1911\n",
+      "Rows after join:       1911\n"
+     ]
+    }
+   ],
+   "source": [
+    "# checking that the join went well by comparing the length of the dataframes before and after join\n",
+    "print(f\"WFS rows before join:  {len(gdf)}\")\n",
+    "print(f\"Rows after join:       {len(gdf_joined)}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 141,
+   "id": "3b1bcd63-80d4-42ef-9ab9-0fc9cbe34cca",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Rows with summer_ratio: 1849\n"
+     ]
+    }
+   ],
+   "source": [
+    "# to see how useful this will be, we can see how many road segments have a summer ratio\n",
+    "# some might not have one as the spatial data retrieved from the API might have content from after 2024\n",
+    "print(f\"Rows with summer_ratio: {gdf_joined['summer_ratio'].notna().sum()}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 142,
+   "id": "5eeac007-d3c6-415f-bdae-c61788df48a1",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Rows WITHOUT summer_ratio: 62\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"Rows WITHOUT summer_ratio: {gdf_joined['summer_ratio'].isna().sum()}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 143,
+   "id": "4d5737e8-a2c4-449a-a6b4-6a02bca51f26",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Unmatched rows: 62\n",
+      "Unmatched VEGNR values: ['205', '25', '340', '376', '426', '458', '5033', '607', '617', '624', '6302', '643', '65', '7175', '768', '805', '807', '825', '8310', '833', '843', '8819', '901', '9212', '9214', '9339', '934', '952', '953']\n",
+      "\n",
+      "Sample unmatched:\n",
+      "    VEGNR KAFLANR          NAFNFITJU\n",
+      "203   205       3      Klausturvegur\n",
+      "334    25       3   Þykkvabæjarvegur\n",
+      "432   376       3         Breiðamörk\n",
+      "435   376       3         Breiðamörk\n",
+      "436   376       3         Breiðamörk\n",
+      "437   376       3         Breiðamörk\n",
+      "497   340       2     Auðsholtsvegur\n",
+      "682   458       2  Brautarholtsvegur\n",
+      "685   426       1      Bláalónsvegur\n",
+      "700   458       2  Brautarholtsvegur\n"
+     ]
+    }
+   ],
+   "source": [
+    "# check what is going on with those roads that do not have a summer ratio/are not matched correctly\n",
+    "unmatched = gdf_joined[gdf_joined['summer_ratio'].isna()]\n",
+    "print(f\"\\nUnmatched rows: {len(unmatched)}\")\n",
+    "print(f\"Unmatched VEGNR values: {sorted(unmatched['VEGNR'].unique())}\")\n",
+    "print(f\"\\nSample unmatched:\")\n",
+    "print(unmatched[['VEGNR', 'KAFLANR', 'NAFNFITJU']].head(10).to_string())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3eb4f310-4f1e-4446-9478-9cb0f413b228",
+   "metadata": {},
+   "source": [
+    "As we can see based on the road numbers of the unmatched roads, the ones missing are small roads. These are minor incosistencies between the two data sources, which especially makes sense as they are from different years (road traffic data from 2024 and spatial data from 2026). To check, I will look at how many rows from my road traffic dataframe have no matching geometry."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 144,
+   "id": "65889b2f-0e64-40f1-9f4f-b29b22044066",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Excel rows with no WFS geometry: 6\n",
+      "    Vegnr Kaflanr         Vegheiti  summer_ratio\n",
+      "205  2421       1       Safnavegur      1.444444\n",
+      "208  2440       1   Skógafossvegur      1.400000\n",
+      "411   424       1  Keflavíkurvegur      1.121456\n",
+      "412   424       2  Keflavíkurvegur      1.135470\n",
+      "413   424      11  Keflavíkurvegur      1.138726\n",
+      "855   793       2      Skarðsvegur      2.250000\n"
+     ]
+    }
+   ],
+   "source": [
+    "excel_in_wfs = kaflanr.merge(\n",
+    "    gdf[['VEGNR', 'KAFLANR']].drop_duplicates(),\n",
+    "    left_on=['Vegnr', 'Kaflanr'],\n",
+    "    right_on=['VEGNR', 'KAFLANR'],\n",
+    "    how='left'\n",
+    ")\n",
+    "no_geometry = excel_in_wfs[excel_in_wfs['VEGNR'].isna()]\n",
+    "print(f\"Excel rows with no WFS geometry: {len(no_geometry)}\")\n",
+    "print(no_geometry[['Vegnr', 'Kaflanr', 'Vegheiti', 'summer_ratio']].head(10).to_string())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "356e1f46-0796-4b1c-94bf-42d3f70b3b5d",
+   "metadata": {},
+   "source": [
+    "As there are only six of those, I will simply remove them. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 145,
+   "id": "1200953f-197e-4b4c-a4ca-90ef2279e752",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# drop those rows that do not have a summer ratio\n",
+    "gdf_final = gdf_joined[gdf_joined['summer_ratio'].notna()].copy().reset_index(drop=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 146,
+   "id": "7eb470e9-0c89-4584-b276-8818f7a340d7",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Final GeoDataFrame: 1849 rows\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"Final GeoDataFrame: {len(gdf_final)} rows\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 147,
+   "id": "0ecddbc4-21c8-4d84-aa4a-836c806a5600",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# set the correct CRS \n",
+    "gdf_final = gdf_final.to_crs(\"EPSG:3057\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 148,
+   "id": "13131d0a-b2c5-42a1-867f-fc8aa574bb3f",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CRS: EPSG:3057\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"CRS: {gdf_final.crs}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 149,
+   "id": "a38da7ea-ed80-4c56-b947-cbcf3a3a2ff0",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Summer ratio range: 0.40 – 3.27\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"Summer ratio range: {gdf_final['summer_ratio'].min():.2f} – {gdf_final['summer_ratio'].max():.2f}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "20cc2ae9-c4bd-419b-9924-c923eeaa6979",
+   "metadata": {},
+   "source": [
+    "The range of the summer ratio has actually remained the same as in the original dataframe based only on the road traffic data. We did not remove any of the rows with the most extreme values.\n",
+    "\n",
+    "Now, I can export this dataframe to work with it as my road data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 150,
+   "id": "0c53c76b-463a-4deb-bc1f-9b132ddd4bb7",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "geometry        geometry\n",
+      "VEGNR             object\n",
+      "KAFLANR           object\n",
+      "NAFNFITJU         object\n",
+      "LENGD              int64\n",
+      "VEGFLOKKUN         int64\n",
+      "Vegnr             object\n",
+      "Kaflanr           object\n",
+      "summer_ratio     float64\n",
+      "rADU             float64\n",
+      "Vegheiti          object\n",
+      "Start_name        object\n",
+      "End_name          object\n",
+      "rSDU             float64\n",
+      "Lengd            float64\n",
+      "rVDU             float64\n",
+      "dtype: object\n"
+     ]
+    }
+   ],
+   "source": [
+    "# checking that there will be no issues due to the data types of any column\n",
+    "print(gdf_final.dtypes)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 151,
+   "id": "49bbe7ee-4780-458d-bb6d-562ec28402d3",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "# there are some duplicate columns, so I will clean them before exporting\n",
+    "\n",
+    "# dropping redundant columns from the join\n",
+    "gdf_final = gdf_final.drop(columns=['Vegnr', 'Kaflanr', 'Vegheiti', 'Lengd'])\n",
+    "\n",
+    "# Renaming API data columns to cleaner names\n",
+    "gdf_final = gdf_final.rename(columns={\n",
+    "    'VEGNR':      'vegnr',\n",
+    "    'KAFLANR':    'kaflanr',\n",
+    "    'NAFNFITJU':  'road_name',\n",
+    "    'LENGD':      'length_m',\n",
+    "    'VEGFLOKKUN': 'road_class',\n",
+    "    'Start_name': 'start_name',\n",
+    "    'End_name':   'end_name',\n",
+    "    'rADU':       'aadt',\n",
+    "    'rSDU':       'sdt',\n",
+    "    'rVDU':       'vdu'\n",
+    "})"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 152,
+   "id": "d6d8e252-ffb1-49d7-817d-6fd4ffc507c1",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "['geometry', 'vegnr', 'kaflanr', 'road_name', 'length_m', 'road_class', 'summer_ratio', 'aadt', 'start_name', 'end_name', 'sdt', 'vdu']\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(gdf_final.columns.tolist())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 153,
+   "id": "955f6e40-36bd-47f0-a5a0-c05f4278d13c",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>geometry</th>\n",
+       "      <th>vegnr</th>\n",
+       "      <th>kaflanr</th>\n",
+       "      <th>road_name</th>\n",
+       "      <th>length_m</th>\n",
+       "      <th>road_class</th>\n",
+       "      <th>summer_ratio</th>\n",
+       "      <th>aadt</th>\n",
+       "      <th>start_name</th>\n",
+       "      <th>end_name</th>\n",
+       "      <th>sdt</th>\n",
+       "      <th>vdu</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>LINESTRING Z (471745.936 558013.322 295.205, 4...</td>\n",
+       "      <td>1</td>\n",
+       "      <td>m5</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>9830</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1.547228</td>\n",
+       "      <td>1454.346290</td>\n",
+       "      <td>Víðivörðuás, veðurstöð (mastur)</td>\n",
+       "      <td>Skagafjarðarvegur (752-01)</td>\n",
+       "      <td>2250.000000</td>\n",
+       "      <td>883.335689</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>LINESTRING Z (443360.390 352811.454 29.166, 44...</td>\n",
+       "      <td>1</td>\n",
+       "      <td>c0</td>\n",
+       "      <td>Hringvegur</td>\n",
+       "      <td>10130</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1.378146</td>\n",
+       "      <td>3739.190523</td>\n",
+       "      <td>Bakkavegur (253-01)</td>\n",
+       "      <td>Hvolsvöllur, Hlíðarvegur</td>\n",
+       "      <td>5150.444225</td>\n",
+       "      <td>2634.698914</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                                            geometry vegnr kaflanr  \\\n",
+       "0  LINESTRING Z (471745.936 558013.322 295.205, 4...     1      m5   \n",
+       "1  LINESTRING Z (443360.390 352811.454 29.166, 44...     1      c0   \n",
+       "\n",
+       "    road_name  length_m  road_class  summer_ratio         aadt  \\\n",
+       "0  Hringvegur      9830           1      1.547228  1454.346290   \n",
+       "1  Hringvegur     10130           1      1.378146  3739.190523   \n",
+       "\n",
+       "                        start_name                    end_name          sdt  \\\n",
+       "0  Víðivörðuás, veðurstöð (mastur)  Skagafjarðarvegur (752-01)  2250.000000   \n",
+       "1              Bakkavegur (253-01)    Hvolsvöllur, Hlíðarvegur  5150.444225   \n",
+       "\n",
+       "           vdu  \n",
+       "0   883.335689  \n",
+       "1  2634.698914  "
+      ]
+     },
+     "execution_count": 153,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "gdf_final.head(2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 154,
+   "id": "95c75f8f-0353-44ba-8d46-de8f4734f65c",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Saved successfully\n"
+     ]
+    }
+   ],
+   "source": [
+    "# exporting the dataframe in EPSG:4326 for GeoJSON compatibility\n",
+    "# the EPSG I set is mostly used for Iceland, but to ensure nothing can go wrong, I will save it with EPSG 4326\n",
+    "gdf_final.to_crs(\"EPSG:4326\").to_file(\"iceland_traffic_summer_ratio.geojson\", driver=\"GeoJSON\")\n",
+    "print(\"\\nSaved successfully\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "21494767-22a1-4896-a554-e48f42aa3d07",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
