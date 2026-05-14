@@ -9,6 +9,8 @@ Here is an overview of what each notebook does, what inputs (if any) it needs, a
 
 Data Retrieval and Pre-Processing -- Overnight Stays
 
+This notebook reads in and pre-processes the data related to the overnight stays.
+
 Inputs: 
 - Overnight_stays_per_muncip_Iceland_2024.xlsx
 - LMI WFS for boundaries (not a local file)
@@ -20,6 +22,8 @@ Outputs:
 
 Data Retrieval and Pre-Processing -- Road Traffic Data
 
+The notebook reads in and pre-processes the data related to the road traffic counts.
+
 Inputs:
 - road_traffic_data_2024.xlsx
 - Geoserver API geometries (not a local file)
@@ -29,6 +33,8 @@ Outputs:
 
 
 Analysis and Visualization -- Overnight Stays
+
+This notebook uses the pro-processed data related to overnight stays for analysis and visuals.
 
 Inputs:
 - iceland_overnight_geo_df.geojson
@@ -40,6 +46,8 @@ Outputs:
 
 Analysis and Visualization -- Road Traffic Data
 
+This notebook uses the pro-processed data related to road traffic counts for analysis and visuals.
+
 Inputs:
 - iceland_traffic_summer_ratio.geojson
 
@@ -50,6 +58,8 @@ Outputs:
 
 Data Retrieval -- Tripadvisor Scraping
 
+This notebook scrapes the result pages containing the attractions in Iceland from Tripadvisor.
+
 Inputs:
 - None
 
@@ -58,6 +68,8 @@ Outputs:
 
 
 Data Pre-Processing -- TripAdvisor Pages
+
+The data uses the html files scraped from Tripadvisor and creates a dataframe of attractions.
 
 Inputs:
 - 98 html files contained in folder tripadvisor_pages
@@ -69,6 +81,8 @@ Outputs:
 
 Data Retrieval -- TripAdvisor Attractions
 
+This notebook uses the link to each attraction contained in the dataframe above to scrape the page of each attraction.
+
 Inputs:
 - tripadvisor_attractions_filtered.json
 
@@ -77,6 +91,8 @@ Outputs:
 
 
 Data Pre-Processing -- Tripadvisor Attractions
+
+This notebook creates a geodataframe of attractions including their geocoordinates.
 
 Inputs:
 - tripadvisor_attractions_filtered
@@ -89,6 +105,8 @@ Outputs:
 
 Analysis and Visualization -- KDE Plot and DBSCAN on Tripadvisor Data
 
+This notebook uses the pre-processed Tripadvisor data and uses it for analysis and visualization.
+
 Inputs:
 - tripadvisor_attractions_geo.geojson
 
@@ -98,6 +116,8 @@ Outputs:
 
 Data Pre-Processing -- Groups of Categories from TripAdvisor Data
 
+This notebook creates groups of categories for the Tripadvisor data. 
+
 Inputs:
 - tripadvisor_attractions_geo_cleaned.geojson
 
@@ -106,6 +126,8 @@ Outputs:
 
 
 Routing App - Preprocessing
+
+This notebook does all pre-processing needed for the routing app.
 
 Inputs:
 - tripadvisor_attractions_geo_prepared.geojson
@@ -120,6 +142,9 @@ Outputs:
 
 
 Routing App - Routing
+
+This notebook contains the routing algorithm, but to be run in Python (the app.py file in the app folder is for the actual streamlit app
+with the prototype).
 
 Inputs:
 - iceland_drive_accessible.graphml
