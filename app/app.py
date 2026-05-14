@@ -178,7 +178,10 @@ if generate:
                 break
 
             weights = top_candidates['hiddengem_score'].tolist()
-            if sum(weights) == 0:
+            min_weight = min(weights)
+            if min_weight < 0:
+                weights = [w - min_weight for w in weights]
+            if sum(weights) <= 0:
                 weights = None
 
             anchor = top_candidates.sample(n=1, weights=weights, random_state=RANDOM_SEED + day).iloc[0]
@@ -203,7 +206,10 @@ if generate:
             if len(top_secondary_candidates) > 0:
                 weights = top_secondary_candidates['hiddengem_score'].tolist()
                 n_to_sample = min(MAX_STOPS_PER_DAY - 1, len(top_secondary_candidates))
-                if sum(weights) <= 0 or any(w < 0 for w in weights):
+                min_weight = min(weights)
+                if min_weight < 0:
+                    weights = [w - min_weight for w in weights]
+                if sum(weights) <= 0:
                     weights = None
                 secondaries = top_secondary_candidates.sample(
                     n=n_to_sample,
