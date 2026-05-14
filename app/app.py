@@ -176,15 +176,18 @@ if generate:
             if len(top_candidates) == 0:
                 st.warning(f"Day {day+1}: no eligible attractions found, route ended early.")
                 break
+        
 
-            weights = top_candidates['hiddengem_score'].tolist()
-            min_weight = min(weights)
-            if min_weight < 0:
-                weights = [w - min_weight for w in weights]
-            if sum(weights) <= 0:
-                weights = None
-
-            anchor = top_candidates.sample(n=1, weights=weights, random_state=RANDOM_SEED + day).iloc[0]
+            try:
+                weights = top_candidates['hiddengem_score'].tolist()
+                min_weight = min(weights)
+                if min_weight < 0:
+                    weights = [w - min_weight + 1e-6 for w in weights]
+                if sum(weights) <= 0:
+                    weights = None
+                anchor = top_candidates.sample(n=1, weights=weights, random_state=RANDOM_SEED + day).iloc[0]
+            except Exception:
+                anchor = top_candidates.sample(n=1, weights=None, random_state=RANDOM_SEED + day).iloc[0]
             anchor_node = anchor['node_id']
 
             # STEP 4 - secondary attractions
