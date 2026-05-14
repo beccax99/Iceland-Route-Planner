@@ -66,7 +66,7 @@ with st.sidebar:
     st.info("Warning: Each click generates a new unique route.")
 
     st.info("Note: The Average off the beaten path information is calculated by taking the average of the hiddem gem scores of each attraction"
-    "and presenting them as a percentage.")
+    " and presenting them as a percentage.")
 
 # Routing and Output
 
