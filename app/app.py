@@ -111,6 +111,7 @@ if generate:
         itinerary = []
         remaining_days = N_DAYS
         anchor_nodes_visited = [keflavik_node]
+        route_notes = []
 
         # Step 6: Routing Loop
 
@@ -140,7 +141,7 @@ if generate:
 
             # STEP 3 - anchor selection
             if len(eligible) == 0:
-                st.warning(f"No eligible attractions found for day {day+1}. Try more categories or fewer days.")
+                route_notes.append(f"Day {day+1}: not enough attractions available. Try adding more categories or reducing days.")
                 break
 
             distance_from_current = eligible['node_id'].map(lambda n: dist_df.at[current_node, n])
@@ -171,10 +172,11 @@ if generate:
             if len(eligible_band) < TOP_N_ANCHORS:
                 eligible_band = eligible
 
-            top_candidates = eligible_band.nlargest(TOP_N_ANCHORS, 'hiddengem_score')
 
+            top_candidates = eligible_band.nlargest(TOP_N_ANCHORS, 'hiddengem_score')
+            
             if len(top_candidates) == 0:
-                st.warning(f"Day {day+1}: no eligible attractions found, route ended early.")
+                route_notes.append(f"Day {day+1}: no eligible attractions found, route ended early.")
                 break
         
 
@@ -394,6 +396,7 @@ if generate:
         summary_lines.append(f"**Overall off the beaten path: {sum(all_scores)/len(all_scores) * 100:.0f}%**")
 
         st.markdown("\n\n".join(summary_lines))
+        st.session_state['route_notes'] = route_notes
         st.session_state['map'] = m._repr_html_()
         st.session_state['summary'] = "\n\n".join(summary_lines)
 
@@ -404,7 +407,9 @@ if 'map' in st.session_state:
     with tab1:
         st.components.v1.html(st.session_state['map'], width=900, height=600)
     with tab2:
-        st.markdown(st.session_state['summary'])
+            st.markdown(st.session_state['summary'])
+            if st.session_state.get('route_notes'):
+                st.info("\n\n".join(st.session_state['route_notes']))
     st.download_button(
         label="Download Itinerary",
         data=st.session_state['summary'],
