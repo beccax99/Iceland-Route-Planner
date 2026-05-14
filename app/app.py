@@ -139,6 +139,10 @@ if generate:
                 eligible = eligible[eligible['node_id'].map(has_onward_options)].copy()
 
             # STEP 3 - anchor selection
+            if len(eligible) == 0:
+                st.warning(f"No eligible attractions found for day {day+1}. Try more categories or fewer days.")
+                break
+
             distance_from_current = eligible['node_id'].map(lambda n: dist_df.at[current_node, n])
 
             if 1 <= day <= N_DAYS - 2:
