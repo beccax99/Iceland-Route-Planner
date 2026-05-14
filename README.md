@@ -8,6 +8,7 @@ is present and should run.
 Here is an overview of what each notebook does, what inputs (if any) it needs, and what outputs (if any) it produces:
 
 Data Retrieval and Pre-Processing -- Overnight Stays
+
 This notebook reads in and pre-processes the data related to the overnight stays.
 
 Inputs: 
@@ -20,6 +21,7 @@ Outputs:
 
 
 Data Retrieval and Pre-Processing -- Road Traffic Data
+
 The notebook reads in and pre-processes the data related to the road traffic counts.
 
 Inputs:
@@ -31,6 +33,7 @@ Outputs:
 
 
 Analysis and Visualization -- Overnight Stays
+
 This notebook uses the pro-processed data related to overnight stays for analysis and visuals.
 
 Inputs:
@@ -42,6 +45,7 @@ Outputs:
 
 
 Analysis and Visualization -- Road Traffic Data
+
 This notebook uses the pro-processed data related to road traffic counts for analysis and visuals.
 
 Inputs:
@@ -53,6 +57,7 @@ Outputs:
 
 
 Data Retrieval -- Tripadvisor Scraping
+
 This notebook scrapes the result pages containing the attractions in Iceland from Tripadvisor.
 
 Inputs:
@@ -63,6 +68,7 @@ Outputs:
 
 
 Data Pre-Processing -- TripAdvisor Pages
+
 The data uses the html files scraped from Tripadvisor and creates a dataframe of attractions.
 
 Inputs:
@@ -74,6 +80,7 @@ Outputs:
 
 
 Data Retrieval -- TripAdvisor Attractions
+
 This notebook uses the link to each attraction contained in the dataframe above to scrape the page of each attraction.
 
 Inputs:
@@ -84,6 +91,7 @@ Outputs:
 
 
 Data Pre-Processing -- Tripadvisor Attractions
+
 This notebook creates a geodataframe of attractions including their geocoordinates.
 
 Inputs:
@@ -96,6 +104,7 @@ Outputs:
 
 
 Analysis and Visualization -- KDE Plot and DBSCAN on Tripadvisor Data
+
 This notebook uses the pre-processed Tripadvisor data and uses it for analysis and visualization.
 
 Inputs:
@@ -106,6 +115,7 @@ Outputs:
 
 
 Data Pre-Processing -- Groups of Categories from TripAdvisor Data
+
 This notebook creates groups of categories for the Tripadvisor data. 
 
 Inputs:
@@ -116,6 +126,7 @@ Outputs:
 
 
 Routing App - Preprocessing
+
 This notebook does all pre-processing needed for the routing app.
 
 Inputs:
@@ -131,6 +142,7 @@ Outputs:
 
 
 Routing App - Routing
+
 This notebook contains the routing algorithm, but to be run in Python (the app.py file in the app folder is for the actual streamlit app
 with the prototype).
 
