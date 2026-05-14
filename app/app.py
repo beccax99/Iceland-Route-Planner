@@ -202,14 +202,17 @@ if generate:
                 ].copy()
 
             top_secondary_candidates = secondaries.nlargest(TOP_N_ANCHORS, 'hiddengem_score')
-            
+                
             if len(top_secondary_candidates) > 0:
                 weights = top_secondary_candidates['hiddengem_score'].tolist()
                 n_to_sample = min(MAX_STOPS_PER_DAY - 1, len(top_secondary_candidates))
-                min_weight = min(weights)
-                if min_weight < 0:
-                    weights = [w - min_weight for w in weights]
-                if sum(weights) <= 0:
+                try:
+                    min_weight = min(weights)
+                    if min_weight < 0:
+                        weights = [w - min_weight + 1e-6 for w in weights]
+                    if sum(weights) <= 0:
+                        weights = None
+                except Exception:
                     weights = None
                 secondaries = top_secondary_candidates.sample(
                     n=n_to_sample,
