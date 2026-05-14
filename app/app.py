@@ -374,14 +374,15 @@ if generate:
         st.session_state['map'] = m._repr_html_()
         st.session_state['summary'] = "\n\n".join(summary_lines)
 
-    # Display stored outputs if they exist
-    if 'map' in st.session_state:
-        tab1, tab2 = st.tabs(["Map", "Itinerary"])
-        with tab1:
-            st.components.v1.html(st.session_state['map'], width=900, height=600)
-        with tab2:
-            st.markdown(st.session_state['summary'])
-        st.download_button(
+
+# Display stored outputs if they exist - OUTSIDE if generate block
+if 'map' in st.session_state:
+    tab1, tab2 = st.tabs(["Map", "Itinerary"])
+    with tab1:
+        st.components.v1.html(st.session_state['map'], width=900, height=600)
+    with tab2:
+        st.markdown(st.session_state['summary'])
+    st.download_button(
         label="Download Itinerary",
         data=st.session_state['summary'],
         file_name="iceland_itinerary.txt",
